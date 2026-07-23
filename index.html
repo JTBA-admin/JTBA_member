@@ -150,6 +150,16 @@
                     </div>
                 </div>
 
+                <!-- Location Filter (新增在興趣類型之前) -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500 w-20 flex items-center gap-1">
+                        <i class="fa-solid fa-map-pin text-emerald-500"></i> 所在地區:
+                    </span>
+                    <div id="location-filter-pills" class="flex flex-wrap gap-1.5 flex-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
                 <!-- Interest Type Filter -->
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="text-xs font-semibold text-slate-500 w-20 flex items-center gap-1">
@@ -184,12 +194,12 @@
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
                             <tr>
-                                <th class="py-3 px-4">成員姓名</th>
-                                <th class="py-3 px-4">現狀/身份</th>
+                                <th class="py-3 px-4 whitespace-nowrap min-w-[160px]">成員姓名</th>
+                                <th class="py-3 px-4 whitespace-nowrap min-w-[130px]">現狀/身份</th>
                                 <th class="py-3 px-4">公司與職稱</th>
                                 <th class="py-3 px-4">興趣類型</th>
                                 <th class="py-3 px-4">專業與技能</th>
-                                <th class="py-3 px-4 text-right">操作</th>
+                                <th class="py-3 px-4 text-right whitespace-nowrap">操作</th>
                             </tr>
                         </thead>
                         <tbody id="list-view-body" class="divide-y divide-slate-100"></tbody>
@@ -254,8 +264,8 @@
                         <span id="modal-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             --
                         </span>
-                        <span id="modal-location-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                            <i class="fa-solid fa-location-dot mr-1 text-slate-400"></i><span id="modal-location-text">--</span>
+                        <span id="modal-location-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <i class="fa-solid fa-location-dot mr-1 text-emerald-500"></i><span id="modal-location-text">--</span>
                         </span>
                     </div>
                 </div>
@@ -338,7 +348,7 @@
 
             <div class="space-y-3">
                 <label class="block text-xs font-bold text-slate-700">Google Sheet 網址或 Sheet ID</label>
-                <input type="text" id="sheet-url-input" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono" value="https://docs.google.com/spreadsheets/d/1ROJwH5jUQweevzZKwyBvFJ5TNwVmJqPp8tjB-DAPEDc/edit?usp=sharing">
+                <input type="text" id="sheet-url-input" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono" value="https://docs.google.com/spreadsheets/d/1vz8dmFOTr30v4b3EUxDQvZghWKV7y47Xx8NAzxbo_4Y/edit?usp=sharing">
                 <p class="text-[11px] text-slate-400">
                     <i class="fa-solid fa-circle-info mr-1"></i> 請確認表格已在選單「檔案 > 分享 > 發布到網路」或權限設為「知道連結的人皆可檢視」。
                 </p>
@@ -408,6 +418,12 @@
                     <div id="stat-status-bars" class="space-y-2"></div>
                 </div>
 
+                <!-- 新增所在地區統計分布 -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">所在地區分布 (Location Breakdown)</h4>
+                    <div id="stat-location-bars" class="space-y-2"></div>
+                </div>
+
                 <div>
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">熱門興趣類型排行 (Top Interests)</h4>
                     <div id="stat-interest-bars" class="space-y-2"></div>
@@ -469,13 +485,14 @@
 
     <script>
         // Default Google Sheet ID provided by user
-        const DEFAULT_SHEET_ID = '1ROJwH5jUQweevzZKwyBvFJ5TNwVmJqPp8tjB-DAPEDc';
+        const DEFAULT_SHEET_ID = '1vz8dmFOTr30v4b3EUxDQvZghWKV7y47Xx8NAzxbo_4Y';
         let currentSheetUrl = `https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}/edit?usp=sharing`;
 
         // Application State
         let allMembers = [];
         let filteredMembers = [];
         let activeStatusFilter = 'ALL';
+        let activeLocationFilter = 'ALL';
         let activeInterestFilter = 'ALL';
         let activeBookmarkOnly = false;
         let searchQuery = '';
@@ -720,6 +737,10 @@
                     return false;
                 }
 
+                if (activeLocationFilter !== 'ALL' && m.location !== activeLocationFilter) {
+                    return false;
+                }
+
                 if (activeInterestFilter !== 'ALL' && !m.interests.includes(activeInterestFilter)) {
                     return false;
                 }
@@ -736,15 +757,35 @@
             document.getElementById('total-results').textContent = filteredMembers.length;
         }
 
+        // 修改為依成員人數由多到少（降序）排序
         function getUniqueStatuses() {
-            const set = new Set(allMembers.map(m => m.status));
-            return Array.from(set);
+            const counts = {};
+            allMembers.forEach(m => {
+                if (m.status) counts[m.status] = (counts[m.status] || 0) + 1;
+            });
+            return Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+        }
+
+        function getUniqueLocations() {
+            const counts = {};
+            allMembers.forEach(m => {
+                if (m.location && m.location.trim() !== '') {
+                    counts[m.location] = (counts[m.location] || 0) + 1;
+                }
+            });
+            return Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
         }
 
         function getUniqueInterests() {
-            const set = new Set();
-            allMembers.forEach(m => m.interests.forEach(i => set.add(i)));
-            return Array.from(set);
+            const counts = {};
+            allMembers.forEach(m => {
+                m.interests.forEach(i => {
+                    if (i && i.trim() !== '') {
+                        counts[i] = (counts[i] || 0) + 1;
+                    }
+                });
+            });
+            return Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
         }
 
         function renderFilterPills() {
@@ -768,6 +809,27 @@
                 `;
             });
             statusContainer.innerHTML = statusHtml;
+
+            // Location Pills (新增：位於興趣類型之前)
+            const locationContainer = document.getElementById('location-filter-pills');
+            const locations = getUniqueLocations();
+
+            let locationHtml = `
+                <button onclick="setLocationFilter('ALL')" class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${activeLocationFilter === 'ALL' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                    全部地區
+                </button>
+            `;
+
+            locations.forEach(loc => {
+                const count = allMembers.filter(m => m.location === loc).length;
+                const isActive = activeLocationFilter === loc;
+                locationHtml += `
+                    <button onclick="setLocationFilter('${loc}')" class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${isActive ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                        ${loc} (${count})
+                    </button>
+                `;
+            });
+            if (locationContainer) locationContainer.innerHTML = locationHtml;
 
             // Interest Pills
             const interestContainer = document.getElementById('interest-filter-pills');
@@ -793,6 +855,12 @@
 
         function setStatusFilter(st) {
             activeStatusFilter = st;
+            renderFilterPills();
+            applyFilters();
+        }
+
+        function setLocationFilter(loc) {
+            activeLocationFilter = loc;
             renderFilterPills();
             applyFilters();
         }
@@ -835,6 +903,7 @@
 
         function resetAllFilters() {
             activeStatusFilter = 'ALL';
+            activeLocationFilter = 'ALL';
             activeInterestFilter = 'ALL';
             activeBookmarkOnly = false;
             searchQuery = '';
@@ -857,6 +926,7 @@
 
             const chips = [];
             if (activeStatusFilter !== 'ALL') chips.push(`現狀: ${activeStatusFilter}`);
+            if (activeLocationFilter !== 'ALL') chips.push(`地區: ${activeLocationFilter}`);
             if (activeInterestFilter !== 'ALL') chips.push(`興趣: ${activeInterestFilter}`);
             if (activeBookmarkOnly) chips.push(`已收藏項目`);
             if (searchQuery) chips.push(`關鍵字: "${searchQuery}"`);
@@ -965,8 +1035,8 @@
 
                         <!-- Card Footer -->
                         <div class="pt-3 border-t border-slate-100 flex items-center justify-between mt-2">
-                            <span class="text-[11px] text-slate-400 font-medium">
-                                <i class="fa-solid fa-map-pin mr-1 text-slate-400"></i>${m.location}
+                            <span class="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100/80">
+                                <i class="fa-solid fa-location-dot mr-1 text-emerald-500"></i>${m.location}
                             </span>
                             <button onclick="openProfileModal('${m.id}')" class="px-3 py-1.5 text-xs font-bold text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 rounded-xl transition-all flex items-center gap-1">
                                 開啟個人頁 <i class="fa-solid fa-arrow-right text-[10px]"></i>
@@ -987,24 +1057,24 @@
 
                 return `
                     <tr class="hover:bg-slate-50/80 transition-colors">
-                        <td class="py-3.5 px-4">
+                        <td class="py-3.5 px-4 whitespace-nowrap">
                             <div class="flex items-center space-x-2.5">
                                 <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0 text-xs">
                                     <i class="fa-solid fa-user"></i>
                                 </div>
                                 <div>
-                                    <div class="font-bold text-slate-900 flex items-center gap-1.5">
+                                    <div class="font-bold text-slate-900 flex items-center gap-1.5 whitespace-nowrap">
                                         ${m.name}
                                         <button onclick="toggleFavorite(event, '${m.id}')" class="text-xs ${isFav ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}">
                                             <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i>
                                         </button>
                                     </div>
-                                    <div class="text-[11px] text-slate-400"><i class="fa-solid fa-map-pin"></i> ${m.location}</div>
+                                    <div class="text-[11px] text-emerald-600 font-semibold mt-0.5 whitespace-nowrap"><i class="fa-solid fa-location-dot text-emerald-500 mr-1"></i>${m.location}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="py-3.5 px-4">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100 whitespace-nowrap">
                                 ${m.status}
                             </span>
                         </td>
@@ -1321,6 +1391,30 @@
                     </div>
                 `;
             }).join('');
+
+            // 所在地區數據比例圖表
+            const locationContainer = document.getElementById('stat-location-bars');
+            const locations = getUniqueLocations().map(loc => ({
+                name: loc,
+                count: allMembers.filter(m => m.location === loc).length
+            })).sort((a, b) => b.count - a.count);
+
+            if (locationContainer) {
+                locationContainer.innerHTML = locations.map(loc => {
+                    const pct = Math.round((loc.count / allMembers.length) * 100) || 0;
+                    return `
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                                <span>${loc.name}</span>
+                                <span>${loc.count} 人 (${pct}%)</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-emerald-500 rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
 
             const interestContainer = document.getElementById('stat-interest-bars');
             const interests = getUniqueInterests().map(it => ({
