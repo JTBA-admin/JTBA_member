@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本交流會員名冊與個人檔案系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 via-red-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-rose-500/20">
+                    <i class="fa-solid fa-users text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl text-slate-900 leading-tight">在日台灣人交流名冊</h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Japan Member Directory & Profiles</p>
+                </div>
+            </div>
+
+            <!-- Action Tools -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Sync Status Badge -->
+                <div id="sync-status" class="hidden md:flex items-center text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span>
+                    <span id="sync-text">系統連線中</span>
+                </div>
+
+                <button onclick="openStatsModal()" class="px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+                    <span class="hidden sm:inline">統計分析</span>
+                </button>
+
+                <button onclick="toggleBookmarkFilter()" id="bookmark-filter-btn" class="px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-amber-50 hover:text-amber-700 rounded-lg transition-colors flex items-center gap-1.5 border border-transparent">
+                    <i class="fa-regular fa-star text-amber-500" id="bookmark-star-icon"></i>
+                    <span class="hidden sm:inline">我的收藏</span>
+                    <span id="bookmark-count-badge" class="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Top Control Panel: Search & Views -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 mb-6 space-y-4">
+            
+            <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+                <!-- Search Input -->
+                <div class="relative flex-grow max-w-2xl">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜尋姓名、公司與職稱、專業、興趣關鍵字..." class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                    <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- View Switcher & Result Count -->
+                <div class="flex items-center justify-between md:justify-end gap-3">
+                    <span class="text-xs text-slate-500 font-medium">
+                        共 <span id="total-results" class="text-slate-800 font-bold">0</span> 位成員
+                    </span>
+
+                    <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button onclick="switchView('grid')" id="view-btn-grid" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-white text-blue-600 shadow-sm">
+                            <i class="fa-solid fa-grip mr-1"></i> 卡片
+                        </button>
+                        <button onclick="switchView('list')" id="view-btn-list" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+                            <i class="fa-solid fa-list mr-1"></i> 列表
+                        </button>
+                        <button onclick="switchView('group')" id="view-btn-group" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+                            <i class="fa-solid fa-layer-group mr-1"></i> 現狀群組
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-100">
+
+            <!-- Filter Controls -->
+            <div class="space-y-3">
+                <!-- Status Category Filter -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500 w-20 flex items-center gap-1">
+                        <i class="fa-solid fa-location-dot text-rose-500"></i> 現狀/身份:
+                    </span>
+                    <div id="status-filter-pills" class="flex flex-wrap gap-1.5 flex-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Interest Type Filter -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500 w-20 flex items-center gap-1">
+                        <i class="fa-solid fa-heart text-amber-500"></i> 興趣類型:
+                    </span>
+                    <div id="interest-filter-pills" class="flex flex-wrap gap-1.5 flex-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Filters Bar -->
+            <div id="active-filters-bar" class="hidden pt-2 flex items-center justify-between bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100 text-xs">
+                <div class="flex items-center gap-2 flex-wrap" id="active-filters-list">
+                    <span class="text-blue-700 font-medium">目前篩選：</span>
+                </div>
+                <button onclick="resetAllFilters()" class="text-blue-600 hover:text-blue-800 font-medium underline flex items-center gap-1 ml-2">
+                    <i class="fa-solid fa-rotate-left"></i> 重置所有條件
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Member Cards / List Rendering Area -->
+        <div id="members-container">
+            <!-- Grid View -->
+            <div id="grid-view" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+
+            <!-- List View -->
+            <div id="list-view" class="hidden bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+                            <tr>
+                                <th class="py-3 px-4">成員姓名</th>
+                                <th class="py-3 px-4">現狀/身份</th>
+                                <th class="py-3 px-4">公司與職稱</th>
+                                <th class="py-3 px-4">興趣類型</th>
+                                <th class="py-3 px-4">專業與技能</th>
+                                <th class="py-3 px-4 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list-view-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Grouped View -->
+            <div id="group-view" class="hidden space-y-8"></div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fa-solid fa-user-slash"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-700">找不到符合條件的成員</h3>
+                <p class="text-xs text-slate-500 mt-1">請嘗試調整搜尋關鍵字或重置現狀/興趣篩選條件</p>
+                <button onclick="resetAllFilters()" class="mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm">
+                    清除篩選條件
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Member Profile Modal (個人頁面 Page) -->
+    <div id="profile-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden my-8 transform transition-all duration-300 scale-95 opacity-0" id="profile-modal-card">
+            
+            <!-- Close Button -->
+            <button onclick="closeProfileModal()" class="absolute top-4 right-4 z-10 w-9 h-9 bg-slate-900/20 hover:bg-slate-900/40 text-white rounded-full flex items-center justify-center transition-colors backdrop-blur-md">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- Banner Header -->
+            <div class="relative h-28 sm:h-32 bg-gradient-to-r from-rose-500 via-indigo-600 to-blue-600 p-6 flex items-center justify-between">
+                <div class="text-xs bg-white/20 backdrop-blur-md text-white px-3 py-1 rounded-full font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-id-card"></i> 成員個人主頁
+                </div>
+            </div>
+
+            <!-- Profile Content Body -->
+            <div class="px-6 sm:px-8 py-6 space-y-6">
+                <!-- Basic Header Info -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-xl shadow-sm">
+                            <i class="fa-solid fa-user text-slate-400"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 id="modal-name" class="text-2xl font-bold text-slate-900">--</h2>
+                                <button onclick="toggleFavoriteFromModal()" id="modal-fav-btn" class="text-slate-300 hover:text-amber-500 text-xl transition-colors">
+                                    <i class="fa-solid fa-star"></i>
+                                </button>
+                            </div>
+                            <p id="modal-headline" class="text-slate-600 text-sm font-medium mt-0.5">--</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <span id="modal-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            --
+                        </span>
+                        <span id="modal-location-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                            <i class="fa-solid fa-location-dot mr-1 text-slate-400"></i><span id="modal-location-text">--</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Bio / Introduction -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-quote-left text-blue-500"></i> 個人簡介與說明
+                    </h3>
+                    <p id="modal-bio" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+                        尚無簡介資料
+                    </p>
+                </div>
+
+                <!-- Classification Tags: Interests & Skills -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Interest Category Tags -->
+                    <div class="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl">
+                        <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-heart text-amber-500"></i> 興趣類型 / 嗜好
+                        </h4>
+                        <div id="modal-interests-container" class="flex flex-wrap gap-1.5">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Skills & Expertise Tags -->
+                    <div class="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl">
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-wand-magic-sparkles text-blue-500"></i> 專業領域與技能
+                        </h4>
+                        <div id="modal-skills-container" class="flex flex-wrap gap-1.5">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact & Social Actions Bar -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane text-slate-500"></i> 聯絡與交流管道
+                    </h4>
+                    <div id="modal-contacts-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Footer Action Buttons -->
+                <div class="pt-2 flex items-center justify-between border-t border-slate-100">
+                    <button onclick="shareMemberProfile()" class="px-3.5 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-share-nodes"></i> 複製個人主頁專屬連結
+                    </button>
+                    <button onclick="closeProfileModal()" class="px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors shadow-sm">
+                        關閉頁面
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Google Sheet Data Source Modal -->
+    <div id="config-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-file-csv"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900">Google Sheet 資料連結設定</h3>
+                </div>
+                <button onclick="closeConfigModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-600 leading-relaxed">
+                系統預設讀取您設定的 Google Sheet 表格資料。若您更新了試算表內容，請點選下方「重新同步」按鈕。
+            </p>
+
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-700">Google Sheet 網址或 Sheet ID</label>
+                <input type="text" id="sheet-url-input" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono" value="https://docs.google.com/spreadsheets/d/1ROJwH5jUQweevzZKwyBvFJ5TNwVmJqPp8tjB-DAPEDc/edit?usp=sharing">
+                <p class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-circle-info mr-1"></i> 請確認表格已在選單「檔案 > 分享 > 發布到網路」或權限設為「知道連結的人皆可檢視」。
+                </p>
+            </div>
+
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200/80 text-xs text-amber-800 space-y-1">
+                <p class="font-bold"><i class="fa-solid fa-lightbulb text-amber-600"></i> 表格欄位對應提示：</p>
+                <p>自動支援：<code>姓名</code>、<code>現狀/身份</code> (如日本在學中/就職中/交換中)、<code>興趣類型</code>、<code>專業/技能</code>、<code>公司/單位/職稱</code>、<code>Email</code>、<code>LINE</code>、<code>電話</code>、<code>簡介</code>等。</p>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+                <button onclick="useMockData()" class="text-xs text-slate-500 hover:text-slate-700 underline font-medium">
+                    載入測試展示資料
+                </button>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="closeConfigModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                        取消
+                    </button>
+                    <button onclick="applySheetConfig()" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate"></i> 載入並同步
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Stats Modal -->
+    <div id="stats-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900">社群成員數據概覽</h3>
+                </div>
+                <button onclick="closeStatsModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Stats Grid Summary -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-rose-50 p-3.5 rounded-2xl border border-rose-100 text-center">
+                    <span class="text-2xl font-black text-rose-600" id="stat-total-members">0</span>
+                    <span class="block text-[11px] font-bold text-slate-500 mt-1">總成員數</span>
+                </div>
+                <div class="bg-blue-50 p-3.5 rounded-2xl border border-blue-100 text-center">
+                    <span class="text-2xl font-black text-blue-600" id="stat-status-count">0</span>
+                    <span class="block text-[11px] font-bold text-slate-500 mt-1">現狀分類</span>
+                </div>
+                <div class="bg-amber-50 p-3.5 rounded-2xl border border-amber-100 text-center">
+                    <span class="text-2xl font-black text-amber-600" id="stat-interest-count">0</span>
+                    <span class="block text-[11px] font-bold text-slate-500 mt-1">興趣類別數</span>
+                </div>
+                <div class="bg-purple-50 p-3.5 rounded-2xl border border-purple-100 text-center">
+                    <span class="text-2xl font-black text-purple-600" id="stat-fav-count">0</span>
+                    <span class="block text-[11px] font-bold text-slate-500 mt-1">已收藏成員</span>
+                </div>
+            </div>
+
+            <!-- Breakdown Charts / Bars -->
+            <div class="space-y-5">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">現狀與身份分布 (Status Breakdown)</h4>
+                    <div id="stat-status-bars" class="space-y-2"></div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">熱門興趣類型排行 (Top Interests)</h4>
+                    <div id="stat-interest-bars" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <div class="pt-2 text-right">
+                <button onclick="closeStatsModal()" class="px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors">
+                    關閉
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>日本成員交流名冊系統 &copy; 2026 - 連接人脈與生活興趣</p>
+        </div>
+    </footer>
+
+    <script>
+        // Default Google Sheet ID provided by user
+        const DEFAULT_SHEET_ID = '1ROJwH5jUQweevzZKwyBvFJ5TNwVmJqPp8tjB-DAPEDc';
+        let currentSheetUrl = `https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}/edit?usp=sharing`;
+
+        // Application State
+        let allMembers = [];
+        let filteredMembers = [];
+        let activeStatusFilter = 'ALL';
+        let activeInterestFilter = 'ALL';
+        let activeBookmarkOnly = false;
+        let searchQuery = '';
+        let currentView = 'grid'; // 'grid', 'list', 'group'
+        let selectedMember = null;
+        let bookmarks = new Set(JSON.parse(localStorage.getItem('japan_member_bookmarks') || '[]'));
+
+        // Mock Dataset focused on Japan statuses (日本在學中 / 在日就職中 / 日本交換中 / 打工度假中)
+        const MOCK_MEMBERS = [
+            {
+                id: 'm1',
+                name: '陳智遠 Alex',
+                status: '在日就職中',
+                interests: ['AI與生成式應用', '戶外休閒 (登山、騎車、滑雪等)', '日本美食探店', '手沖咖啡'],
+                skills: ['軟體開發', '雲端架構', '商業日文'],
+                company: 'Rakuten 樂天集團',
+                title: '資深後端工程師',
+                location: '東京',
+                bio: '現居東京，來日第 4 年。任職於樂天集團，專注於分散式系統開發。假日喜歡探訪關東周邊的露營區與自家烘焙咖啡店，歡迎交流日本職場與工程技術議題！',
+                email: 'alex.chen@example.com',
+                phone: '080-1234-5678',
+                line: 'alex_tokyo',
+                linkedin: 'https://linkedin.com',
+                website: 'https://example.com'
+            },
+            {
+                id: 'm2',
+                name: '林雅婷 Emily',
+                status: '日本在學中',
+                interests: [' UI/UX 設計', '美術館展覽', '古着店巡禮', '日文閱讀'],
+                skills: ['使用者體驗設計', 'Figma', '視覺傳達'],
+                company: '東京藝術大學',
+                title: '設計學研究科 碩士生',
+                location: '東京',
+                bio: '東藝大設計專攻碩士在讀中，主要研究人機介面與日系字體設計。喜歡在下北澤與高円寺逛二手古着。積極尋找 2026/2027 在日 UI/UX 設計實習機會！',
+                email: 'emily.lin@example.com',
+                phone: '090-8765-4321',
+                line: 'emily_design_jp',
+                linkedin: 'https://linkedin.com',
+                website: 'https://dribbble.com'
+            },
+            {
+                id: 'm3',
+                name: '張家豪 Howard',
+                status: '日本交換中',
+                interests: ['數位遊牧', '攝影拍照', '滑雪運動', '日語演練'],
+                skills: ['Front-end Dev', 'React', 'Vue.js'],
+                company: '早稻田大學',
+                title: '交換留學生 (來自國立清華大學)',
+                location: '東京',
+                bio: '清大資工系大四，目前在早稻田大學交換留學一學年。對日本 Web 產業與新創環境相當有興趣，冬天的興趣是去長野滑雪！',
+                email: 'howard.dev@example.com',
+                phone: '080-9999-8888',
+                line: 'howard_waseda',
+                linkedin: 'https://linkedin.com',
+                website: 'https://github.com'
+            },
+            {
+                id: 'm4',
+                name: '黃怡君 Jessica',
+                status: '在日就職中',
+                interests: ['創投投資', '紅酒品鑑', '溫泉旅行', '高爾夫球'],
+                skills: ['團隊管理', '跨國專案', '商業開發'],
+                company: 'Mercari 株式會社',
+                title: '產品營運經理 (Product Manager)',
+                location: '東京',
+                bio: '來日 6 年，曾經歷日本外商顧問業，目前於 Mercari 擔任 PM。熟悉日企文化與跨國團隊溝通。熱心分享轉職與日本簽證發展相關經驗。',
+                email: 'jessica.huang@example.com',
+                phone: '070-1111-2222',
+                line: 'jessica_mercari',
+                linkedin: 'https://linkedin.com',
+                website: ''
+            },
+            {
+                id: 'm5',
+                name: '許宇軒 Kevin',
+                status: '打工度假中',
+                interests: ['居酒屋巡禮', '單板滑雪', '音樂祭', '日本地方創生'],
+                skills: ['社群行銷', '影音剪輯', '活動企劃'],
+                company: '京都傳統町家旅宿',
+                title: '行銷兼小幫手',
+                location: '京都',
+                bio: '拿打工度假簽證體驗關西生活，目前住在京都。熱愛關西人情味與在地老店家，正在紀錄日本打工度假生活日誌。',
+                email: 'kevin.hsu@example.com',
+                phone: '080-3333-4444',
+                line: 'kevin_kyoto',
+                linkedin: '',
+                website: 'https://instagram.com'
+            },
+            {
+                id: 'm6',
+                name: '鄭舒涵 Sophia',
+                status: '日本在學中',
+                interests: ['語言交換', '日劇電影', '甜點烘焙', '動漫文化'],
+                skills: ['中日文翻譯', '數據分析', 'Python'],
+                company: '京都大學',
+                title: '經濟學研究科 博士班',
+                location: '京都',
+                bio: '京大經濟博士班，研究領域為勞動經濟學與台日人才移動。希望多認識關西地區的夥伴，交流學術與就業規劃。',
+                email: 'sophia.cheng@example.com',
+                phone: '090-5555-6666',
+                line: 'sophia_kyodai',
+                linkedin: 'https://linkedin.com',
+                website: ''
+            }
+        ];
+
+        // Format Company and Title to prevent duplication like "Manager @ Manager"
+        function getDisplayCompanyTitle(company, title) {
+            const comp = (company || '').trim();
+            const tit = (title || '').trim();
+
+            if (!comp && !tit) return '交流成員';
+            if (!comp) return tit;
+            if (!tit) return comp;
+
+            // If title and company are identical or contain each other
+            if (comp.toLowerCase() === tit.toLowerCase()) {
+                return comp;
+            }
+            if (comp.includes(tit)) {
+                return comp;
+            }
+            if (tit.includes(comp)) {
+                return tit;
+            }
+
+            return `${tit} @ ${comp}`;
+        }
+
+        // Extract Google Sheet ID from input string
+        function extractSheetId(input) {
+            if (!input) return DEFAULT_SHEET_ID;
+            const match = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            return match ? match[1] : input.trim();
+        }
+
+        async function fetchGoogleSheetData(sheetUrlOrId) {
+            const sheetId = extractSheetId(sheetUrlOrId);
+            showToast('正在讀取最新資料...', 'info');
+            
+            const endpoints = [
+                `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`,
+                `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`
+            ];
+
+            let csvText = null;
+
+            for (const url of endpoints) {
+                try {
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        csvText = await res.text();
+                        if (csvText && csvText.length > 20 && !csvText.includes('<!DOCTYPE html>')) {
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Direct fetch failed, trying proxy...', e);
+                }
+            }
+
+            if (!csvText) {
+                try {
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(endpoints[0])}`;
+                    const res = await fetch(proxyUrl);
+                    if (res.ok) {
+                        csvText = await res.text();
+                    }
+                } catch (e) {
+                    console.error('Proxy fetch failed:', e);
+                }
+            }
+
+            if (csvText && csvText.length > 20) {
+                const parsed = parseCSV(csvText);
+                if (parsed && parsed.length > 0) {
+                    allMembers = parsed;
+                    updateSyncBadge(true, `名冊資料同步完成 (${allMembers.length} 筆)`);
+                    showToast(`成功載入 ${allMembers.length} 筆成員資料！`, 'success');
+                    return true;
+                }
+            }
+
+            // Fallback
+            allMembers = MOCK_MEMBERS;
+            updateSyncBadge(false, '使用範例展示資料');
+            showToast('無法讀取最新資料，已載入預設展示資料', 'warning');
+            return false;
+        }
+
+        function parseCSV(text) {
+            const lines = [];
+            let row = [];
+            let inQuotes = false;
+            let currentVal = '';
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        currentVal += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    row.push(currentVal.trim());
+                    currentVal = '';
+                } else if ((char === '\r' || char === '\n') && !inQuotes) {
+                    if (char === '\r' && nextChar === '\n') i++;
+                    row.push(currentVal.trim());
+                    if (row.some(field => field.length > 0)) lines.push(row);
+                    row = [];
+                    currentVal = '';
+                } else {
+                    currentVal += char;
+                }
+            }
+            if (currentVal.length > 0 || row.length > 0) {
+                row.push(currentVal.trim());
+                if (row.some(field => field.length > 0)) lines.push(row);
+            }
+
+            if (lines.length < 2) return null;
+
+            const headers = lines[0].map(h => h.trim().toLowerCase());
+            
+            const findCol = (keywords) => {
+                return headers.findIndex(h => keywords.some(k => h.includes(k.toLowerCase())));
+            };
+
+            const idxName = findCol(['姓名', 'name', '會員姓名', '成員']);
+            // 新增「您的現況」、「現況」等欄位關鍵字匹配
+            const idxStatus = findCol(['現況', '現狀', '身份', '狀態', 'status', '角色', '您的現況', '目前現況', '身份/現況']);
+            const idxInterest = findCol(['興趣', '興趣類型', '嗜好', 'interest', '喜好', '您的興趣']);
+            const idxSkill = findCol(['專業', '技能', '專長', 'skill', '領域', '專長與技能']);
+            
+            // Handle cases where column name is "公司與職稱" or "公司/單位"
+            const idxCompTitleCombined = findCol(['公司與職稱', '公司/職稱', '單位/職稱', '現職單位與職稱', '單位與職稱']);
+            const idxCompany = idxCompTitleCombined !== -1 ? idxCompTitleCombined : findCol(['公司', '單位', '組織', 'company', '機構']);
+            const idxTitle = idxCompTitleCombined !== -1 ? idxCompTitleCombined : findCol(['職稱', '頭銜', 'title', '職位']);
+
+            const idxLocation = findCol(['地區', '城市', '居住地', 'location', '地點', '日本地區', '居住地區']);
+            const idxBio = findCol(['簡介', '自我介紹', '經驗', 'bio', '介紹', '個人簡介']);
+            const idxEmail = findCol(['email', '信箱', '郵件', '電子郵件']);
+            const idxPhone = findCol(['電話', '手機', 'phone', '連絡電話', '聯絡電話']);
+            const idxLine = findCol(['line', 'line id', '通訊']);
+            const idxLinkedin = findCol(['linkedin', '領英']);
+            const idxWebsite = findCol(['網站', '作品集', 'website', 'blog', '個人頁']);
+
+            const members = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const r = lines[i];
+                const name = idxName !== -1 ? r[idxName] : r[0];
+                if (!name || name.trim() === '') continue;
+
+                // 智慧解析標籤：括號 ( ... ) 與 （ ... ） 內不拆分項目
+                const parseTags = (val) => {
+                    if (!val) return [];
+                    const results = [];
+                    let current = '';
+                    let depth = 0;
+
+                    for (let i = 0; i < val.length; i++) {
+                        const char = val[i];
+                        
+                        // 追蹤半形與全形括號深度
+                        if (char === '(' || char === '（') {
+                            depth++;
+                            current += char;
+                        } else if (char === ')' || char === '）') {
+                            if (depth > 0) depth--;
+                            current += char;
+                        } else if (depth === 0 && (char === '\n' || char === '\r' || char === ',' || char === '，' || char === ';' || char === '；' || char === '/' || char === '、')) {
+                            // 僅在括號外遇到分隔符號時進行拆分
+                            if (current.trim()) {
+                                results.push(current.trim());
+                            }
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    if (current.trim()) {
+                        results.push(current.trim());
+                    }
+                    return results.map(t => t.trim()).filter(t => t.length > 0);
+                };
+
+                let compVal = idxCompany !== -1 ? r[idxCompany] : '';
+                let titleVal = idxTitle !== -1 ? r[idxTitle] : '';
+
+                // If parsed from a combined "公司與職稱" column
+                if (idxCompTitleCombined !== -1) {
+                    compVal = r[idxCompTitleCombined] || '';
+                    titleVal = '';
+                }
+
+                const member = {
+                    id: `m_${i}`,
+                    name: name,
+                    status: (idxStatus !== -1 && r[idxStatus]) ? r[idxStatus] : '未設定現況',
+                    interests: idxInterest !== -1 ? parseTags(r[idxInterest]) : ['生活交流'],
+                    skills: idxSkill !== -1 ? parseTags(r[idxSkill]) : [],
+                    company: compVal,
+                    title: titleVal,
+                    location: (idxLocation !== -1 && r[idxLocation]) ? r[idxLocation] : '日本',
+                    bio: (idxBio !== -1 && r[idxBio]) ? r[idxBio] : '該成員暫未填寫詳細簡介。',
+                    email: (idxEmail !== -1 && r[idxEmail]) ? r[idxEmail] : '',
+                    phone: (idxPhone !== -1 && r[idxPhone]) ? r[idxPhone] : '',
+                    line: (idxLine !== -1 && r[idxLine]) ? r[idxLine] : '',
+                    linkedin: (idxLinkedin !== -1 && r[idxLinkedin]) ? r[idxLinkedin] : '',
+                    website: (idxWebsite !== -1 && r[idxWebsite]) ? r[idxWebsite] : ''
+                };
+
+                members.push(member);
+            }
+
+            return members;
+        }
+
+        function applyFilters() {
+            filteredMembers = allMembers.filter(m => {
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const nameMatch = m.name.toLowerCase().includes(q);
+                    const companyMatch = m.company.toLowerCase().includes(q);
+                    const titleMatch = m.title.toLowerCase().includes(q);
+                    const bioMatch = m.bio.toLowerCase().includes(q);
+                    const skillMatch = m.skills.some(s => s.toLowerCase().includes(q));
+                    const interestMatch = m.interests.some(i => i.toLowerCase().includes(q));
+                    if (!nameMatch && !companyMatch && !titleMatch && !bioMatch && !skillMatch && !interestMatch) {
+                        return false;
+                    }
+                }
+
+                if (activeStatusFilter !== 'ALL' && m.status !== activeStatusFilter) {
+                    return false;
+                }
+
+                if (activeInterestFilter !== 'ALL' && !m.interests.includes(activeInterestFilter)) {
+                    return false;
+                }
+
+                if (activeBookmarkOnly && !bookmarks.has(m.id)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            renderMembers();
+            renderActiveFilterBar();
+            document.getElementById('total-results').textContent = filteredMembers.length;
+        }
+
+        function getUniqueStatuses() {
+            const set = new Set(allMembers.map(m => m.status));
+            return Array.from(set);
+        }
+
+        function getUniqueInterests() {
+            const set = new Set();
+            allMembers.forEach(m => m.interests.forEach(i => set.add(i)));
+            return Array.from(set);
+        }
+
+        function renderFilterPills() {
+            // Status Pills
+            const statusContainer = document.getElementById('status-filter-pills');
+            const statuses = getUniqueStatuses();
+            
+            let statusHtml = `
+                <button onclick="setStatusFilter('ALL')" class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${activeStatusFilter === 'ALL' ? 'bg-rose-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                    全部現狀 (${allMembers.length})
+                </button>
+            `;
+
+            statuses.forEach(st => {
+                const count = allMembers.filter(m => m.status === st).length;
+                const isActive = activeStatusFilter === st;
+                statusHtml += `
+                    <button onclick="setStatusFilter('${st}')" class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${isActive ? 'bg-rose-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                        ${st} (${count})
+                    </button>
+                `;
+            });
+            statusContainer.innerHTML = statusHtml;
+
+            // Interest Pills
+            const interestContainer = document.getElementById('interest-filter-pills');
+            const interests = getUniqueInterests();
+
+            let interestHtml = `
+                <button onclick="setInterestFilter('ALL')" class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${activeInterestFilter === 'ALL' ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                    全部興趣
+                </button>
+            `;
+
+            interests.forEach(it => {
+                const count = allMembers.filter(m => m.interests.includes(it)).length;
+                const isActive = activeInterestFilter === it;
+                interestHtml += `
+                    <button onclick="setInterestFilter('${it}')" class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${isActive ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                        ${it} (${count})
+                    </button>
+                `;
+            });
+            interestContainer.innerHTML = interestHtml;
+        }
+
+        function setStatusFilter(st) {
+            activeStatusFilter = st;
+            renderFilterPills();
+            applyFilters();
+        }
+
+        function setInterestFilter(it) {
+            activeInterestFilter = it;
+            renderFilterPills();
+            applyFilters();
+        }
+
+        function handleSearch() {
+            const input = document.getElementById('search-input');
+            searchQuery = input.value.trim();
+            document.getElementById('clear-search-btn').classList.toggle('hidden', searchQuery.length === 0);
+            applyFilters();
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            searchQuery = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+            applyFilters();
+        }
+
+        function toggleBookmarkFilter() {
+            activeBookmarkOnly = !activeBookmarkOnly;
+            const btn = document.getElementById('bookmark-filter-btn');
+            const star = document.getElementById('bookmark-star-icon');
+            
+            if (activeBookmarkOnly) {
+                btn.classList.add('bg-amber-100', 'text-amber-800', 'border-amber-300');
+                star.classList.replace('fa-regular', 'fa-solid');
+                showToast('只顯示您收藏的成員', 'info');
+            } else {
+                btn.classList.remove('bg-amber-100', 'text-amber-800', 'border-amber-300');
+                star.classList.replace('fa-solid', 'fa-regular');
+            }
+            applyFilters();
+        }
+
+        function resetAllFilters() {
+            activeStatusFilter = 'ALL';
+            activeInterestFilter = 'ALL';
+            activeBookmarkOnly = false;
+            searchQuery = '';
+            document.getElementById('search-input').value = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+
+            const btn = document.getElementById('bookmark-filter-btn');
+            const star = document.getElementById('bookmark-star-icon');
+            btn.classList.remove('bg-amber-100', 'text-amber-800', 'border-amber-300');
+            star.classList.replace('fa-solid', 'fa-regular');
+
+            renderFilterPills();
+            applyFilters();
+            showToast('已重置所有條件', 'info');
+        }
+
+        function renderActiveFilterBar() {
+            const bar = document.getElementById('active-filters-bar');
+            const container = document.getElementById('active-filters-list');
+
+            const chips = [];
+            if (activeStatusFilter !== 'ALL') chips.push(`現狀: ${activeStatusFilter}`);
+            if (activeInterestFilter !== 'ALL') chips.push(`興趣: ${activeInterestFilter}`);
+            if (activeBookmarkOnly) chips.push(`已收藏項目`);
+            if (searchQuery) chips.push(`關鍵字: "${searchQuery}"`);
+
+            if (chips.length > 0) {
+                bar.classList.remove('hidden');
+                container.innerHTML = `<span class="text-blue-700 font-medium">篩選中：</span>` + 
+                    chips.map(c => `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">${c}</span>`).join('');
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('view-btn-grid').className = view === 'grid' 
+                ? 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-white text-blue-600 shadow-sm' 
+                : 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900';
+            
+            document.getElementById('view-btn-list').className = view === 'list' 
+                ? 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-white text-blue-600 shadow-sm' 
+                : 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900';
+            
+            document.getElementById('view-btn-group').className = view === 'group' 
+                ? 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-white text-blue-600 shadow-sm' 
+                : 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900';
+
+            document.getElementById('grid-view').classList.toggle('hidden', view !== 'grid');
+            document.getElementById('list-view').classList.toggle('hidden', view !== 'list');
+            document.getElementById('group-view').classList.toggle('hidden', view !== 'group');
+
+            renderMembers();
+        }
+
+        function renderMembers() {
+            const emptyState = document.getElementById('empty-state');
+            if (filteredMembers.length === 0) {
+                emptyState.classList.remove('hidden');
+                document.getElementById('grid-view').innerHTML = '';
+                document.getElementById('list-view-body').innerHTML = '';
+                document.getElementById('group-view').innerHTML = '';
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            if (currentView === 'grid') {
+                renderGridView();
+            } else if (currentView === 'list') {
+                renderListView();
+            } else if (currentView === 'group') {
+                renderGroupView();
+            }
+        }
+
+        // 1. Grid View Renderer (Clean Card UI without photos)
+        function renderGridView() {
+            const container = document.getElementById('grid-view');
+            container.innerHTML = filteredMembers.map(m => {
+                const isFav = bookmarks.has(m.id);
+                const displayCompTitle = getDisplayCompanyTitle(m.company, m.title);
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between group relative">
+                        
+                        <!-- Favorite Star -->
+                        <button onclick="toggleFavorite(event, '${m.id}')" class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-slate-50 hover:bg-amber-50 text-slate-300 hover:text-amber-500 flex items-center justify-center transition-colors">
+                            <i class="${isFav ? 'fa-solid text-amber-500' : 'fa-regular'} fa-star"></i>
+                        </button>
+
+                        <div>
+                            <!-- Header Icon + Member Info -->
+                            <div class="flex items-start space-x-3 mb-3">
+                                <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 flex-shrink-0 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                    <i class="fa-solid fa-user text-sm"></i>
+                                </div>
+                                <div class="pr-6 min-w-0">
+                                    <h3 class="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors truncate">
+                                        ${m.name}
+                                    </h3>
+                                    <p class="text-xs text-slate-500 font-medium truncate mt-0.5" title="${displayCompTitle}">
+                                        ${displayCompTitle}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Status Badge -->
+                            <div class="mb-3">
+                                <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                                    <i class="fa-solid fa-location-dot mr-1"></i>${m.status}
+                                </span>
+                            </div>
+
+                            <!-- Bio Preview -->
+                            <p class="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed bg-slate-50 p-2.5 rounded-xl">
+                                "${m.bio || '熱情交流中...'}"
+                            </p>
+
+                            <!-- Interests Tags -->
+                            <div class="space-y-1.5 mb-4">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">興趣類型</div>
+                                <div class="flex flex-wrap gap-1">
+                                    ${m.interests.map(i => `<span class="text-[11px] px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md font-medium border border-amber-100">${i}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between mt-2">
+                            <span class="text-[11px] text-slate-400 font-medium">
+                                <i class="fa-solid fa-map-pin mr-1 text-slate-400"></i>${m.location}
+                            </span>
+                            <button onclick="openProfileModal('${m.id}')" class="px-3 py-1.5 text-xs font-bold text-blue-600 hover:text-white bg-blue-50 hover:bg-blue-600 rounded-xl transition-all flex items-center gap-1">
+                                開啟個人頁 <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 2. List View Renderer
+        function renderListView() {
+            const body = document.getElementById('list-view-body');
+            body.innerHTML = filteredMembers.map(m => {
+                const isFav = bookmarks.has(m.id);
+                const displayCompTitle = getDisplayCompanyTitle(m.company, m.title);
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0 text-xs">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-900 flex items-center gap-1.5">
+                                        ${m.name}
+                                        <button onclick="toggleFavorite(event, '${m.id}')" class="text-xs ${isFav ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}">
+                                            <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                                        </button>
+                                    </div>
+                                    <div class="text-[11px] text-slate-400"><i class="fa-solid fa-map-pin"></i> ${m.location}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                                ${m.status}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 max-w-xs">
+                            <div class="font-medium text-slate-800 text-xs truncate" title="${displayCompTitle}">${displayCompTitle}</div>
+                        </td>
+                        <td class="py-3.5 px-4 max-w-xs">
+                            <div class="flex flex-wrap gap-1">
+                                ${m.interests.map(i => `<span class="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded font-medium">${i}</span>`).join('')}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 max-w-xs">
+                            <div class="flex flex-wrap gap-1">
+                                ${m.skills.map(s => `<span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded font-medium">${s}</span>`).join('')}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <button onclick="openProfileModal('${m.id}')" class="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                個人 Page
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 3. Category Grouped View Renderer
+        function renderGroupView() {
+            const container = document.getElementById('group-view');
+            const groups = {};
+
+            filteredMembers.forEach(m => {
+                if (!groups[m.status]) groups[m.status] = [];
+                groups[m.status].push(m);
+            });
+
+            container.innerHTML = Object.keys(groups).map(statusName => {
+                const membersInGroup = groups[statusName];
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                                <h3 class="font-bold text-slate-900 text-base">${statusName}</h3>
+                                <span class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">
+                                    ${membersInGroup.length} 人
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${membersInGroup.map(m => {
+                                const displayCompTitle = getDisplayCompanyTitle(m.company, m.title);
+                                return `
+                                    <div onclick="openProfileModal('${m.id}')" class="p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 bg-slate-50/50 hover:bg-white transition-all cursor-pointer flex items-center space-x-3 group">
+                                        <div class="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 flex-shrink-0 group-hover:text-blue-600 group-hover:border-blue-300 transition-colors">
+                                            <i class="fa-solid fa-user text-xs"></i>
+                                        </div>
+                                        <div class="flex-grow min-w-0">
+                                            <div class="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors truncate">${m.name}</div>
+                                            <div class="text-xs text-slate-500 truncate">${displayCompTitle}</div>
+                                            <div class="text-[10px] text-amber-700 font-medium truncate mt-0.5"><i class="fa-solid fa-heart mr-0.5"></i> ${m.interests.join(' / ')}</div>
+                                        </div>
+                                        <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-blue-500 text-xs"></i>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleFavorite(e, id) {
+            e.stopPropagation();
+            if (bookmarks.has(id)) {
+                bookmarks.delete(id);
+                showToast('已移除收藏', 'info');
+            } else {
+                bookmarks.add(id);
+                showToast('已加入個人收藏！', 'success');
+            }
+            localStorage.setItem('japan_member_bookmarks', JSON.stringify(Array.from(bookmarks)));
+            updateBookmarkBadge();
+            applyFilters();
+        }
+
+        function toggleFavoriteFromModal() {
+            if (!selectedMember) return;
+            const id = selectedMember.id;
+            if (bookmarks.has(id)) {
+                bookmarks.delete(id);
+                showToast('已移除收藏', 'info');
+            } else {
+                bookmarks.add(id);
+                showToast('已加入個人收藏！', 'success');
+            }
+            localStorage.setItem('japan_member_bookmarks', JSON.stringify(Array.from(bookmarks)));
+            updateBookmarkBadge();
+            updateModalFavButton();
+            applyFilters();
+        }
+
+        function updateBookmarkBadge() {
+            const badge = document.getElementById('bookmark-count-badge');
+            badge.textContent = bookmarks.size;
+        }
+
+        function updateModalFavButton() {
+            if (!selectedMember) return;
+            const btn = document.getElementById('modal-fav-btn');
+            const isFav = bookmarks.has(selectedMember.id);
+            btn.className = `text-xl transition-colors ${isFav ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}`;
+        }
+
+        function openProfileModal(memberId) {
+            const member = allMembers.find(m => m.id === memberId);
+            if (!member) return;
+
+            selectedMember = member;
+            window.location.hash = `member-${member.id}`;
+
+            document.getElementById('modal-name').textContent = member.name;
+            document.getElementById('modal-headline').textContent = getDisplayCompanyTitle(member.company, member.title);
+            document.getElementById('modal-status-badge').textContent = member.status;
+            document.getElementById('modal-location-text').textContent = member.location;
+            document.getElementById('modal-bio').textContent = member.bio || '該成員暫未填寫詳細個人簡介。';
+
+            // Interests Container
+            const interestsContainer = document.getElementById('modal-interests-container');
+            interestsContainer.innerHTML = member.interests.length > 0 
+                ? member.interests.map(i => `<span class="px-2.5 py-1 text-xs font-semibold bg-white text-amber-800 rounded-lg border border-amber-200/80 shadow-sm"><i class="fa-solid fa-tag text-amber-500 mr-1"></i>${i}</span>`).join('')
+                : '<span class="text-xs text-amber-700">暫無標籤</span>';
+
+            // Skills Container
+            const skillsContainer = document.getElementById('modal-skills-container');
+            skillsContainer.innerHTML = member.skills.length > 0
+                ? member.skills.map(s => `<span class="px-2.5 py-1 text-xs font-semibold bg-white text-blue-800 rounded-lg border border-blue-200/80 shadow-sm"><i class="fa-solid fa-code text-blue-500 mr-1"></i>${s}</span>`).join('')
+                : '<span class="text-xs text-blue-700">暫無技能標籤</span>';
+
+            // Contacts Grid Buttons
+            const contactsGrid = document.getElementById('modal-contacts-grid');
+            let contactsHtml = '';
+
+            if (member.email) {
+                contactsHtml += `
+                    <a href="mailto:${member.email}" class="p-2.5 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl transition-all flex items-center space-x-2 group">
+                        <i class="fa-solid fa-envelope text-blue-600 text-base"></i>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] font-bold text-slate-400">Email</div>
+                            <div class="text-xs font-medium text-slate-800 truncate group-hover:text-blue-600">${member.email}</div>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (member.phone) {
+                contactsHtml += `
+                    <a href="tel:${member.phone}" class="p-2.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl transition-all flex items-center space-x-2 group">
+                        <i class="fa-solid fa-phone text-emerald-600 text-base"></i>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] font-bold text-slate-400">電話</div>
+                            <div class="text-xs font-medium text-slate-800 truncate group-hover:text-emerald-600">${member.phone}</div>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (member.line) {
+                contactsHtml += `
+                    <button onclick="copyToClipboard('${member.line}', 'LINE ID 已複製')" class="p-2.5 bg-slate-50 hover:bg-green-50 border border-slate-200 hover:border-green-300 rounded-xl transition-all flex items-center space-x-2 group text-left">
+                        <i class="fa-brands fa-line text-green-500 text-lg"></i>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] font-bold text-slate-400">LINE ID (複製)</div>
+                            <div class="text-xs font-medium text-slate-800 truncate group-hover:text-green-600">${member.line}</div>
+                        </div>
+                    </button>
+                `;
+            }
+
+            if (member.linkedin) {
+                contactsHtml += `
+                    <a href="${member.linkedin}" target="_blank" class="p-2.5 bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 rounded-xl transition-all flex items-center space-x-2 group">
+                        <i class="fa-brands fa-linkedin text-sky-600 text-base"></i>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] font-bold text-slate-400">LinkedIn</div>
+                            <div class="text-xs font-medium text-slate-800 truncate group-hover:text-sky-600">開啟個人頁</div>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (member.website) {
+                contactsHtml += `
+                    <a href="${member.website}" target="_blank" class="p-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all flex items-center space-x-2 group">
+                        <i class="fa-solid fa-globe text-indigo-600 text-base"></i>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] font-bold text-slate-400">個人網站</div>
+                            <div class="text-xs font-medium text-slate-800 truncate group-hover:text-indigo-600">開啟連結</div>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (!contactsHtml) {
+                contactsHtml = `<div class="col-span-full text-xs text-slate-400 italic bg-slate-50 p-3 rounded-xl">該成員未公開聯絡通訊方式</div>`;
+            }
+
+            contactsGrid.innerHTML = contactsHtml;
+            updateModalFavButton();
+
+            const modal = document.getElementById('profile-modal');
+            const card = document.getElementById('profile-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                card.classList.remove('scale-95', 'opacity-0');
+                card.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeProfileModal() {
+            const modal = document.getElementById('profile-modal');
+            const card = document.getElementById('profile-modal-card');
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                history.pushState("", document.title, window.location.pathname + window.location.search);
+            }, 200);
+        }
+
+        function shareMemberProfile() {
+            if (!selectedMember) return;
+            const shareUrl = `${window.location.origin}${window.location.pathname}#member-${selectedMember.id}`;
+            copyToClipboard(shareUrl, '已複製該成員個人主頁專屬連結！');
+        }
+
+        function copyToClipboard(text, successMsg) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(successMsg, 'success');
+                }).catch(() => {
+                    legacyCopy(text, successMsg);
+                });
+            } else {
+                legacyCopy(text, successMsg);
+            }
+        }
+
+        function legacyCopy(text, successMsg) {
+            const input = document.createElement('textarea');
+            input.value = text;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            showToast(successMsg, 'success');
+        }
+
+        function openConfigModal() {
+            document.getElementById('config-modal').classList.remove('hidden');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('config-modal').classList.add('hidden');
+        }
+
+        async function applySheetConfig() {
+            const val = document.getElementById('sheet-url-input').value.trim();
+            if (!val) {
+                showToast('請輸入有效的 Google Sheet 連結或 ID', 'warning');
+                return;
+            }
+            currentSheetUrl = val;
+            closeConfigModal();
+            await fetchGoogleSheetData(currentSheetUrl);
+            renderFilterPills();
+            applyFilters();
+        }
+
+        function useMockData() {
+            closeConfigModal();
+            allMembers = MOCK_MEMBERS;
+            updateSyncBadge(false, '使用展示測試資料');
+            renderFilterPills();
+            applyFilters();
+            showToast('已切換為測試展示資料', 'info');
+        }
+
+        function updateSyncBadge(isLive, text) {
+            const statusBox = document.getElementById('sync-status');
+            const statusText = document.getElementById('sync-text');
+            statusBox.classList.remove('hidden');
+            statusText.textContent = text;
+            
+            if (isLive) {
+                statusBox.className = 'hidden md:flex items-center text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+            } else {
+                statusBox.className = 'hidden md:flex items-center text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200';
+            }
+        }
+
+        function openStatsModal() {
+            document.getElementById('stat-total-members').textContent = allMembers.length;
+            document.getElementById('stat-status-count').textContent = getUniqueStatuses().length;
+            document.getElementById('stat-interest-count').textContent = getUniqueInterests().length;
+            document.getElementById('stat-fav-count').textContent = bookmarks.size;
+
+            const statusContainer = document.getElementById('stat-status-bars');
+            const statuses = getUniqueStatuses();
+            statusContainer.innerHTML = statuses.map(st => {
+                const count = allMembers.filter(m => m.status === st).length;
+                const pct = Math.round((count / allMembers.length) * 100) || 0;
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                            <span>${st}</span>
+                            <span>${count} 人 (${pct}%)</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-rose-500 rounded-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const interestContainer = document.getElementById('stat-interest-bars');
+            const interests = getUniqueInterests().map(it => ({
+                name: it,
+                count: allMembers.filter(m => m.interests.includes(it)).length
+            })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+            interestContainer.innerHTML = interests.map(it => {
+                const pct = Math.round((it.count / allMembers.length) * 100) || 0;
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                            <span>${it.name}</span>
+                            <span>${it.count} 人 (${pct}%)</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-amber-500 rounded-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('stats-modal').classList.remove('hidden');
+        }
+
+        function closeStatsModal() {
+            document.getElementById('stats-modal').classList.add('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgMap = {
+                success: 'bg-emerald-600 text-white',
+                warning: 'bg-amber-600 text-white',
+                info: 'bg-slate-900 text-white'
+            };
+
+            const iconMap = {
+                success: 'fa-circle-check',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+
+            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-xs font-medium flex items-center space-x-2.5 transition-all duration-300 transform translate-y-2 opacity-0 ${bgMap[type] || bgMap.info}`;
+            toast.innerHTML = `<i class="fa-solid ${iconMap[type]} text-sm"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function checkUrlHashRoute() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#member-')) {
+                const memberId = hash.replace('#member-', '');
+                setTimeout(() => {
+                    openProfileModal(memberId);
+                }, 300);
+            }
+        }
+
+        // App Initialization
+        window.onload = async function() {
+            updateBookmarkBadge();
+            await fetchGoogleSheetData(currentSheetUrl);
+            renderFilterPills();
+            applyFilters();
+            checkUrlHashRoute();
+
+            window.addEventListener('hashchange', checkUrlHashRoute);
+        };
+    </script>
+</body>
+</html>
