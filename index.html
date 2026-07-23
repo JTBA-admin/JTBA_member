@@ -61,7 +61,7 @@
 
     <!-- Header / Navbar -->
     <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Header Title -->
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 via-red-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-rose-500/20">
                     <i class="fa-solid fa-users text-lg"></i>
@@ -79,6 +79,12 @@
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span>
                     <span id="sync-text">系統連線中</span>
                 </div>
+
+                <!-- Coffee Chat Draw Button -->
+                <button onclick="openCoffeeChatModal()" class="px-3 py-1.5 text-xs sm:text-sm font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300/80 rounded-lg transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                    <i class="fa-solid fa-mug-hot text-amber-600 animate-bounce"></i>
+                    <span>Coffee Chat 隨機抽卡</span>
+                </button>
 
                 <button onclick="openStatsModal()" class="px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5">
                     <i class="fa-solid fa-chart-pie text-indigo-600"></i>
@@ -344,9 +350,9 @@
             </div>
 
             <div class="flex items-center justify-between pt-2">
-                <button onclick="useMockData()" class="text-xs text-slate-500 hover:text-slate-700 underline font-medium">
-                    載入測試展示資料
-                </button>
+                <span class="text-xs text-slate-400">
+                    資料同步狀態管理
+                </span>
 
                 <div class="flex items-center gap-2">
                     <button onclick="closeConfigModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
@@ -416,10 +422,48 @@
         </div>
     </div>
 
+    <!-- Coffee Chat Random Draw Modal -->
+    <div id="coffee-chat-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 space-y-5 relative overflow-hidden">
+            
+            <!-- Close Button -->
+            <button onclick="closeCoffeeChatModal()" class="absolute top-4 right-4 z-10 w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="flex items-center space-x-3 border-b border-slate-100 pb-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center text-lg shadow-md shadow-amber-500/20">
+                    <i class="fa-solid fa-dice text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-lg">Coffee Chat 隨機配對</h3>
+                    <p class="text-xs text-slate-500">打破沉默！隨機認識一位 JTBA 夥伴交流互動</p>
+                </div>
+            </div>
+
+            <!-- Draw Result Area -->
+            <div id="coffee-draw-container" class="min-h-[220px] flex flex-col items-center justify-center">
+                <!-- Initial / Shuffling state or Result Card inserted here dynamically -->
+            </div>
+
+            <!-- Modal Controls -->
+            <div class="pt-2 flex items-center justify-between border-t border-slate-100">
+                <span class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-sparkles text-amber-500 mr-1"></i>每週認識一位新朋友！
+                </span>
+                <button onclick="shuffleCoffeeChat()" id="reshuffle-btn" class="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-rotate-right"></i> 重新洗牌抽卡
+                </button>
+            </div>
+
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p>日本成員交流名冊系統 &copy; 2026 - 連接人脈與生活興趣</p>
+            <p>JTBA會員名冊與個人檔案系統 &copy; 2026 - 連接人脈與生活興趣</p>
         </div>
     </footer>
 
@@ -438,106 +482,6 @@
         let currentView = 'grid'; // 'grid', 'list', 'group'
         let selectedMember = null;
         let bookmarks = new Set(JSON.parse(localStorage.getItem('japan_member_bookmarks') || '[]'));
-
-        // Mock Dataset focused on Japan statuses (日本在學中 / 在日就職中 / 日本交換中 / 打工度假中)
-        const MOCK_MEMBERS = [
-            {
-                id: 'm1',
-                name: '陳智遠 Alex',
-                status: '在日就職中',
-                interests: ['AI與生成式應用', '戶外休閒 (登山、騎車、滑雪等)', '日本美食探店', '手沖咖啡'],
-                skills: ['軟體開發', '雲端架構', '商業日文'],
-                company: 'Rakuten 樂天集團',
-                title: '資深後端工程師',
-                location: '東京',
-                bio: '現居東京，來日第 4 年。任職於樂天集團，專注於分散式系統開發。假日喜歡探訪關東周邊的露營區與自家烘焙咖啡店，歡迎交流日本職場與工程技術議題！',
-                email: 'alex.chen@example.com',
-                phone: '080-1234-5678',
-                line: 'alex_tokyo',
-                linkedin: 'https://linkedin.com',
-                website: 'https://example.com'
-            },
-            {
-                id: 'm2',
-                name: '林雅婷 Emily',
-                status: '日本在學中',
-                interests: [' UI/UX 設計', '美術館展覽', '古着店巡禮', '日文閱讀'],
-                skills: ['使用者體驗設計', 'Figma', '視覺傳達'],
-                company: '東京藝術大學',
-                title: '設計學研究科 碩士生',
-                location: '東京',
-                bio: '東藝大設計專攻碩士在讀中，主要研究人機介面與日系字體設計。喜歡在下北澤與高円寺逛二手古着。積極尋找 2026/2027 在日 UI/UX 設計實習機會！',
-                email: 'emily.lin@example.com',
-                phone: '090-8765-4321',
-                line: 'emily_design_jp',
-                linkedin: 'https://linkedin.com',
-                website: 'https://dribbble.com'
-            },
-            {
-                id: 'm3',
-                name: '張家豪 Howard',
-                status: '日本交換中',
-                interests: ['數位遊牧', '攝影拍照', '滑雪運動', '日語演練'],
-                skills: ['Front-end Dev', 'React', 'Vue.js'],
-                company: '早稻田大學',
-                title: '交換留學生 (來自國立清華大學)',
-                location: '東京',
-                bio: '清大資工系大四，目前在早稻田大學交換留學一學年。對日本 Web 產業與新創環境相當有興趣，冬天的興趣是去長野滑雪！',
-                email: 'howard.dev@example.com',
-                phone: '080-9999-8888',
-                line: 'howard_waseda',
-                linkedin: 'https://linkedin.com',
-                website: 'https://github.com'
-            },
-            {
-                id: 'm4',
-                name: '黃怡君 Jessica',
-                status: '在日就職中',
-                interests: ['創投投資', '紅酒品鑑', '溫泉旅行', '高爾夫球'],
-                skills: ['團隊管理', '跨國專案', '商業開發'],
-                company: 'Mercari 株式會社',
-                title: '產品營運經理 (Product Manager)',
-                location: '東京',
-                bio: '來日 6 年，曾經歷日本外商顧問業，目前於 Mercari 擔任 PM。熟悉日企文化與跨國團隊溝通。熱心分享轉職與日本簽證發展相關經驗。',
-                email: 'jessica.huang@example.com',
-                phone: '070-1111-2222',
-                line: 'jessica_mercari',
-                linkedin: 'https://linkedin.com',
-                website: ''
-            },
-            {
-                id: 'm5',
-                name: '許宇軒 Kevin',
-                status: '打工度假中',
-                interests: ['居酒屋巡禮', '單板滑雪', '音樂祭', '日本地方創生'],
-                skills: ['社群行銷', '影音剪輯', '活動企劃'],
-                company: '京都傳統町家旅宿',
-                title: '行銷兼小幫手',
-                location: '京都',
-                bio: '拿打工度假簽證體驗關西生活，目前住在京都。熱愛關西人情味與在地老店家，正在紀錄日本打工度假生活日誌。',
-                email: 'kevin.hsu@example.com',
-                phone: '080-3333-4444',
-                line: 'kevin_kyoto',
-                linkedin: '',
-                website: 'https://instagram.com'
-            },
-            {
-                id: 'm6',
-                name: '鄭舒涵 Sophia',
-                status: '日本在學中',
-                interests: ['語言交換', '日劇電影', '甜點烘焙', '動漫文化'],
-                skills: ['中日文翻譯', '數據分析', 'Python'],
-                company: '京都大學',
-                title: '經濟學研究科 博士班',
-                location: '京都',
-                bio: '京大經濟博士班，研究領域為勞動經濟學與台日人才移動。希望多認識關西地區的夥伴，交流學術與就業規劃。',
-                email: 'sophia.cheng@example.com',
-                phone: '090-5555-6666',
-                line: 'sophia_kyodai',
-                linkedin: 'https://linkedin.com',
-                website: ''
-            }
-        ];
 
         // Format Company and Title to prevent duplication like "Manager @ Manager"
         function getDisplayCompanyTitle(company, title) {
@@ -616,10 +560,10 @@
                 }
             }
 
-            // Fallback
-            allMembers = MOCK_MEMBERS;
-            updateSyncBadge(false, '使用範例展示資料');
-            showToast('無法讀取最新資料，已載入預設展示資料', 'warning');
+            // Fallback when fetch fails
+            allMembers = [];
+            updateSyncBadge(false, '無法取得資料');
+            showToast('無法讀取最新資料，請確認網路連線或試算表設定', 'warning');
             return false;
         }
 
@@ -1341,15 +1285,6 @@
             applyFilters();
         }
 
-        function useMockData() {
-            closeConfigModal();
-            allMembers = MOCK_MEMBERS;
-            updateSyncBadge(false, '使用展示測試資料');
-            renderFilterPills();
-            applyFilters();
-            showToast('已切換為測試展示資料', 'info');
-        }
-
         function updateSyncBadge(isLive, text) {
             const statusBox = document.getElementById('sync-status');
             const statusText = document.getElementById('sync-text');
@@ -1413,6 +1348,93 @@
 
         function closeStatsModal() {
             document.getElementById('stats-modal').classList.add('hidden');
+        }
+
+        // --- Coffee Chat Random Draw Logic ---
+        let currentDrawMember = null;
+
+        function openCoffeeChatModal() {
+            if (allMembers.length === 0) {
+                showToast('尚未讀取到成員資料', 'warning');
+                return;
+            }
+            document.getElementById('coffee-chat-modal').classList.remove('hidden');
+            shuffleCoffeeChat();
+        }
+
+        function closeCoffeeChatModal() {
+            document.getElementById('coffee-chat-modal').classList.add('hidden');
+        }
+
+        function shuffleCoffeeChat() {
+            const container = document.getElementById('coffee-draw-container');
+            const btn = document.getElementById('reshuffle-btn');
+            btn.disabled = true;
+
+            // Shuffling Animation State
+            container.innerHTML = `
+                <div class="text-center py-8 space-y-3">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-50 text-amber-500 border border-amber-200 flex items-center justify-center text-2xl animate-spin">
+                        <i class="fa-solid fa-mug-hot"></i>
+                    </div>
+                    <p class="text-xs font-bold text-slate-600 animate-pulse">正在為您挑選適合的 Coffee Chat 夥伴...</p>
+                </div>
+            `;
+
+            setTimeout(() => {
+                // Pick a random member
+                const randomIndex = Math.floor(Math.random() * allMembers.length);
+                currentDrawMember = allMembers[randomIndex];
+
+                renderCoffeeDrawResult(currentDrawMember);
+                btn.disabled = false;
+            }, 600);
+        }
+
+        function renderCoffeeDrawResult(member) {
+            const container = document.getElementById('coffee-draw-container');
+            const displayCompTitle = getDisplayCompanyTitle(member.company, member.title);
+
+            container.innerHTML = `
+                <div class="w-full bg-gradient-to-b from-amber-50/60 to-white rounded-2xl border border-amber-200/80 p-5 shadow-sm space-y-4 animate-fade-in">
+                    
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 font-bold text-xl flex items-center justify-center shadow-inner">
+                                <i class="fa-solid fa-user-astronaut"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+                                    ${member.name}
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                                        ${member.status}
+                                    </span>
+                                </h4>
+                                <p class="text-xs text-slate-500 mt-0.5">${displayCompTitle}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-600 bg-white/80 p-3 rounded-xl border border-slate-100 italic">
+                        "${member.bio || '這位夥伴非常期待與社群朋友交流！'}"
+                    </p>
+
+                    <div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">興趣與話題方向</div>
+                        <div class="flex flex-wrap gap-1">
+                            ${member.interests.map(i => `<span class="text-[11px] px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md font-medium">${i}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex items-center justify-between border-t border-slate-100/80">
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-location-dot mr-1"></i>${member.location}</span>
+                        <button onclick="closeCoffeeChatModal(); openProfileModal('${member.id}')" class="px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all shadow-sm flex items-center gap-1.5">
+                            查看個人主頁與聯絡方式 <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+
+                </div>
+            `;
         }
 
         function showToast(message, type = 'info') {
